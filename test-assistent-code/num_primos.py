@@ -1,5 +1,13 @@
 def eh_primo(n):
-    """Retorna True se n for primo, caso contrário False."""
+    """
+    Verifica se um número é primo.
+
+    Args:
+        n (int): O número a ser verificado.
+
+    Returns:
+        bool: True se o número for primo, False caso contrário.
+    """
     if n <= 1:
         return False
     if n <= 3:
