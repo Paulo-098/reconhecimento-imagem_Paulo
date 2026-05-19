@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow — Gerenciador de Tarefas</title>
+  <meta name="description" content="Gerencie suas tarefas com elegância. Login seguro, persistência local e interface premium." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { slate: { 950: '#0f172a' } },
+          backdropBlur: { xs: '2px' },
+          fontFamily: { inter: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; }
+
+    body {
+      background-color: #0f172a;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(99,102,241,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(16,185,129,0.12) 0%, transparent 60%);
+      min-height: 100vh;
+    }
+
+    /* ── Glass card ── */
+    .glass-card {
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07);
+    }
+
+    /* ── Input ── */
+    .input-field {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #f1f5f9;
+      transition: all 0.25s ease;
+    }
+    .input-field::placeholder { color: rgba(148,163,184,0.5); }
+    .input-field:focus {
+      outline: none;
+      border-color: rgba(99,102,241,0.6);
+      background: rgba(99,102,241,0.08);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    /* Select option colors */
+    .input-field option { background: #1e293b; color: #f1f5f9; }
+
+    /* ── Primary button ── */
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .btn-primary:hover::before { opacity: 1; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 24px -4px rgba(99,102,241,0.5); }
+    .btn-primary:active { transform: translateY(0); }
+
+    /* ── Ghost button ── */
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #94a3b8;
+      transition: all 0.25s ease;
+    }
+    .btn-ghost:hover { border-color: rgba(99,102,241,0.5); color: #a5b4fc; background: rgba(99,102,241,0.08); }
+
+    /* ── Success button (Concluir) ── */
+    .btn-success {
+      background: transparent;
+      border: 1px solid rgba(52,211,153,0.3);
+      color: #6ee7b7;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-success:hover { background: rgba(52,211,153,0.12); border-color: rgba(52,211,153,0.6); }
+    .btn-success:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      border-color: rgba(255,255,255,0.1);
+      color: #64748b;
+    }
+
+    /* ── Feedback messages ── */
+    .feedback-msg { animation: slideDown 0.2s ease; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Screen visibility ── */
+    .screen { display: none; }
+    .screen.active { display: flex; }
+
+    /* ── Logo ── */
+    .logo-glow { filter: drop-shadow(0 0 16px rgba(99,102,241,0.6)); }
+
+    /* ── Todo card ── */
+    .todo-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.2s ease;
+    }
+    .todo-item:hover { background: rgba(255,255,255,0.06); border-color: rgba(99,102,241,0.2); }
+    .todo-item.done { opacity: 0.55; }
+    .todo-item.done .todo-title { text-decoration: line-through; color: rgba(148,163,184,0.5); }
+    .todo-item.done .todo-desc  { text-decoration: line-through; }
+
+    /* ── Type badges ── */
+    .badge-work    { background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+    .badge-personal{ background: rgba(139,92,246,0.15); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
+    .badge-study   { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+
+    /* ── Delete button ── */
+    .btn-delete {
+      color: rgba(148,163,184,0.35);
+      transition: all 0.2s ease;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    .btn-delete:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+
+    /* ── Filter tabs ── */
+    .filter-tab {
+      color: rgba(148,163,184,0.6);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+      background: transparent;
+      border-top: none; border-left: none; border-right: none;
+      cursor: pointer;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .filter-tab:hover { color: #a5b4fc; }
+    .filter-tab.active { color: #6366f1; border-bottom-color: #6366f1; }
+
+    /* ── Empty state ── */
+    .empty-state { animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Inline badge (count) ── */
+    .count-badge {
+      background: rgba(99,102,241,0.2);
+      color: #a5b4fc;
+      border: 1px solid rgba(99,102,241,0.3);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 99px; }
+
+    /* ── Divider ── */
+    .form-divider { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; margin-top: 4px; }
+
+    /* ── Greeting ── */
+    #greeting-name { color: #a5b4fc; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- ═══════════════════════ LOGIN ═══════════════════════ -->
+  <section id="screen-login" class="screen active w-full min-h-screen flex items-center justify-center p-4">
+    <div class="glass-card rounded-2xl p-8 w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="logo-glow inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+             style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-white tracking-tight">Bem-vindo de volta</h1>
+        <p class="text-slate-400 text-sm mt-1">Entre na sua conta para continuar</p>
+      </div>
+
+      <form id="form-login" novalidate class="space-y-4">
+        <div>
+          <label for="login-email" class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">E-mail</label>
+          <input id="login-email" type="email" placeholder="seu@email.com"
+                 class="input-field w-full px-4 py-3 rounded-xl text-sm" autocomplete="email" />
+        </div>
+        <div>
+          <label for="login-password" class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Senha</label>
+          <input id="login-password" type="password" placeholder="••••••••"
+                 class="input-field w-full px-4 py-3 rounded-xl text-sm" autocomplete="current-password" />
+        </div>
+
+        <div id="login-error" class="hidden feedback-msg items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="login-error-text"></span>
+        </div>
+
+        <button id="btn-login" type="submit" class="btn-primary w-full py-3 rounded-xl text-white font-semibold text-sm mt-2">
+          Entrar
+        </button>
+      </form>
+
+      <div class="mt-6 text-center">
+        <p class="text-slate-500 text-sm">
+          Não tem uma conta?
+          <button id="go-register" class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors ml-1">Cadastre-se</button>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ REGISTER ═══════════════════════ -->
+  <section id="screen-register" class="screen w-full min-h-screen flex items-center justify-center p-4">
+    <div class="glass-card rounded-2xl p-8 w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="logo-glow inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+             style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-white tracking-tight">Criar conta</h1>
+        <p class="text-slate-400 text-sm mt-1">Comece a organizar suas tarefas hoje</p>
+      </div>
+
+      <form id="form-register" novalidate class="space-y-4">
+        <div>
+          <label for="reg-name" class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Nome completo</label>
+          <input id="reg-name" type="text" placeholder="João Silva"
+                 class="input-field w-full px-4 py-3 rounded-xl text-sm" autocomplete="name" />
+        </div>
+        <div>
+          <label for="reg-email" class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">E-mail</label>
+          <input id="reg-email" type="email" placeholder="seu@email.com"
+                 class="input-field w-full px-4 py-3 rounded-xl text-sm" autocomplete="email" />
+        </div>
+        <div>
+          <label for="reg-password" class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Senha</label>
+          <input id="reg-password" type="password" placeholder="Mínimo 6 caracteres"
+                 class="input-field w-full px-4 py-3 rounded-xl text-sm" autocomplete="new-password" />
+        </div>
+
+        <div id="reg-error" class="hidden feedback-msg items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="reg-error-text"></span>
+        </div>
+        <div id="reg-success" class="hidden feedback-msg items-center gap-2 text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-3">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <span>Conta criada! Redirecionando...</span>
+        </div>
+
+        <button id="btn-register" type="submit" class="btn-primary w-full py-3 rounded-xl text-white font-semibold text-sm mt-2">
+          Criar conta
+        </button>
+      </form>
+
+      <div class="mt-6 text-center">
+        <p class="text-slate-500 text-sm">
+          Já tem uma conta?
+          <button id="go-login" class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors ml-1">Entrar</button>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ DASHBOARD ═══════════════════════ -->
+  <section id="screen-dashboard" class="screen w-full min-h-screen flex-col">
+
+    <!-- ── Header ── -->
+    <header class="glass-card border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-10"
+            style="border-radius:0; backdrop-filter:blur(20px);">
+      <!-- Greeting -->
+      <div>
+        <div class="flex items-center gap-2.5 mb-0.5">
+          <div class="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0"
+               style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+            </svg>
+          </div>
+          <span class="font-bold text-white text-base tracking-tight">TaskFlow</span>
+        </div>
+        <p class="text-slate-400 text-xs pl-9">
+          Olá, <span id="greeting-name" class="font-semibold"></span> 👋
+        </p>
+      </div>
+
+      <!-- Right side -->
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <p class="text-white text-sm font-medium" id="user-name-display"></p>
+          <p class="text-slate-400 text-xs" id="user-email-display"></p>
+        </div>
+        <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+             id="user-avatar"
+             style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+        </div>
+        <button id="btn-logout"
+                class="btn-ghost px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Sair
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Main content ── -->
+    <main class="max-w-2xl mx-auto w-full px-4 py-8 flex-1">
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="glass-card rounded-xl p-4 text-center">
+          <p class="text-2xl font-bold text-white" id="stat-total">0</p>
+          <p class="text-xs text-slate-400 mt-1">Total</p>
+        </div>
+        <div class="glass-card rounded-xl p-4 text-center">
+          <p class="text-2xl font-bold text-emerald-400" id="stat-done">0</p>
+          <p class="text-xs text-slate-400 mt-1">Concluídas</p>
+        </div>
+        <div class="glass-card rounded-xl p-4 text-center">
+          <p class="text-2xl font-bold text-indigo-400" id="stat-pending">0</p>
+          <p class="text-xs text-slate-400 mt-1">Pendentes</p>
+        </div>
+      </div>
+
+      <!-- ── Add task form ── -->
+      <div class="glass-card rounded-2xl p-5 mb-6">
+        <h2 class="text-white font-semibold text-sm mb-4 flex items-center gap-2">
+          <span class="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                style="background:rgba(99,102,241,0.2)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </span>
+          Nova Tarefa
+        </h2>
+
+        <!-- Row 1: Title + Type -->
+        <div class="flex gap-2 mb-3">
+          <input id="todo-title" type="text" placeholder="Título da tarefa (obrigatório)"
+                 class="input-field flex-1 px-4 py-3 rounded-xl text-sm" />
+          <select id="todo-type" class="input-field px-3 py-3 rounded-xl text-sm cursor-pointer" style="min-width:130px;">
+            <option value="work">💼 Trabalho</option>
+            <option value="personal">🏠 Pessoal</option>
+            <option value="study">📚 Estudos</option>
+          </select>
+        </div>
+
+        <!-- Row 2: Description -->
+        <textarea id="todo-desc" placeholder="Descrição (opcional)"
+                  class="input-field w-full px-4 py-3 rounded-xl text-sm resize-none mb-3"
+                  rows="2" style="min-height:72px;"></textarea>
+
+        <button id="btn-add-todo" class="btn-primary w-full py-2.5 rounded-xl text-white font-semibold text-sm">
+          Adicionar Tarefa
+        </button>
+      </div>
+
+      <!-- ── Filter tabs ── -->
+      <div class="flex items-center gap-1 border-b border-white/5 mb-4">
+        <button class="filter-tab active" data-filter="all">Todas</button>
+        <button class="filter-tab" data-filter="pending">Pendentes</button>
+        <button class="filter-tab" data-filter="done">Concluídas</button>
+        <div class="ml-auto">
+          <span class="count-badge" id="tasks-count">0 tarefas</span>
+        </div>
+      </div>
+
+      <!-- ── Todo list ── -->
+      <div id="todo-list" class="space-y-3 min-h-[120px]"></div>
+
+      <!-- ── Empty state ── -->
+      <div id="empty-state" class="hidden empty-state text-center py-16">
+        <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+             style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.2)">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(99,102,241,0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+          </svg>
+        </div>
+        <p class="text-slate-400 font-medium" id="empty-state-text">Nenhuma tarefa cadastrada ainda.</p>
+        <p class="text-slate-600 text-sm mt-1">Preencha o formulário acima para começar</p>
+      </div>
+    </main>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
